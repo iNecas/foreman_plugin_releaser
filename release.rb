@@ -1,7 +1,5 @@
 #!/usr/bin/env ruby
 
-# TODO: extract to config file
-# TODO: setup procedure
 PACKAGING_PATH="/home/inecas/Projects/ws/foreman-rex/foreman-packaging/"
 
 require 'optparse'
@@ -45,8 +43,6 @@ end
 
 def error(message)
   raise message
-  #STDERR.puts(message)
-  #Kernel.exit 1
 end
 
 def info(message)
@@ -547,7 +543,11 @@ if __FILE__ == $PROGRAM_NAME
 end
 
 # TODOs:
-# - [ ] - bump rpm automatically
-# - [ ] - bump deb automatically
-# - [ ] - update redmine automatically (add version, assign fixed_in and target milestone)
-# - [ ] - configure directories
+# - [x] bump rpm automatically
+# - [x] bump deb automatically
+# - [ ] update gettext if applicable
+# - [ ] update redmine manually (open corresponding pages and suggest to create versions)
+# - [ ] update redmine automatically (add version, assign fixed_in and target milestone)
+# - [ ] extract hardcoded values to config file
+# - [ ] setup procedure
+# - [ ] configure directories

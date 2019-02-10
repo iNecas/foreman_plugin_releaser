@@ -6,7 +6,7 @@ require 'optparse'
 require 'rubygems'
 require 'shellwords'
 
-options = { dry: false, bump: 'z' }
+options = { dry: false, bump: 'z', gem_branch: 'master' }
 
 COMMANDS = %w[gem redmine rpm deb]
 
@@ -18,6 +18,10 @@ OptionParser.new do |opts|
 
   opts.on("-g", "--gemspec GEMSPEC", "Set GEMSPEC (optional)") do |gemspec|
     options[:gemspec] = gemspec
+  end
+
+  opts.on('--gem-branch GEM_BRANCH', "Branch to release the gem in (#{options[:gem_branch]} by default)") do |branch|
+    options[:gem_branch] = branch
   end
 
   opts.on("-v", "--verbose", "Verbose output") do |verbose|
@@ -157,6 +161,7 @@ module Release
     def initialize
       @dir = PACKAGING_PATH
       @git = Git.new(PACKAGING_PATH, base_branch)
+      prepare_git
       @gems = select_to_update(Utils.find_files("*gemspec").map { |gemspec| Gem.new(gemspec) })
       error("No gems need update") if @gems.empty?
     end
@@ -198,7 +203,6 @@ module Release
   class Rpm < OsPackage
 
     def release
-      prepare_git
       @git.new_branch(version_branch)
       @gems.each do |gem|
         release_gem(gem)
@@ -231,7 +235,6 @@ module Release
 
   class Deb < OsPackage
     def release
-      prepare_git
       in_dir do
         foreman_paths, proxy_paths = Hash.new { |h, k| h[k] = [] }, Hash.new { |h, k| h[k] = [] }
 
@@ -298,7 +301,7 @@ module Release
         candidates = []
         variants = [gem.gemname, gem.gemname.tr('_', '-')]
         variants.each do |variant| 
-          candidates.concat(Utils.find_files("plugins/*#{variant}", allow_empty: true))
+          candidates.concat(Utils.find_files("plugins/{ruby-,}#{variant}", allow_empty: true))
           candidates.concat(Utils.find_files("dependencies/*/#{variant}", allow_empty: true))
         end
         error("No DEB package candidates for #{gem.gemname} found") if candidates.empty?
@@ -351,10 +354,10 @@ module Release
 
     attr_reader :gemspec
 
-    def initialize(gemspec)
+    def initialize(gemspec, branch = "master")
       @gemspec = gemspec
       @dir = File.dirname(File.expand_path(@gemspec))
-      @git = Git.new(File.dirname(gemspec), "master")
+      @git = Git.new(File.dirname(gemspec), branch)
     end
 
     def check_exists!
@@ -425,7 +428,7 @@ module Release
     end
 
     def version_file
-      version_file = "lib/#{gemname}/version.rb"
+      version_file = "lib/#{gemname.tr('-', '_')}/version.rb"
       File.expand_path(version_file, @dir)
     end
   end
@@ -520,7 +523,7 @@ if __FILE__ == $PROGRAM_NAME
   begin
     case options[:command]
     when "gem"
-      gem = Release::Gem.new(options[:gemspec] || Release::Gem.find_gemspec)
+      gem = Release::Gem.new(options[:gemspec] || Release::Gem.find_gemspec, options[:gem_branch])
       gem.check_exists!
       gem.bump_version(options[:bump])
       gem.push_gem
